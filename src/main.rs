@@ -6,14 +6,147 @@
 
 
 use std::time;
+use std::thread;
+use std::rc::Rc;
+use std::fmt::Debug;
+use std::fmt::Display;
+
+
 
 use glium::{glutin, Surface};
 use crossbeam_channel::bounded;
-use std::thread;
+
+
+mod glsl_graph {
+    use std::rc::Rc;
+    use std::fmt::Debug;
+    use std::fmt::Display;
+
+    pub enum Dimension {
+        D1,
+        D2,
+        D3,
+        D4,
+    }
+
+    pub trait GlslBLock: Debug {
+        fn inputs_dims(&self) -> Vec<Dimension>;
+        fn output_dims(&self) -> Dimension;
+        fn glsl_code(&self) -> String;
+        fn inputs(&self) -> Vec<Rc<GlslBLock>>;
+    }
+
+    #[derive(Debug)]
+    pub struct BaseSphere {
+        input: Rc<GlslBLock>,
+    }
+    impl BaseSphere {
+        pub fn new(input: Rc<GlslBLock>) -> BaseSphere {
+            Self {
+                input
+            }
+        }
+    }
+    impl GlslBLock for BaseSphere {
+        fn inputs_dims(&self) -> Vec<Dimension> { vec![Dimension::D3] }
+        fn output_dims(&self) -> Dimension { Dimension::D1 }
+        fn glsl_code(&self) -> String {
+            //float sphere(vec3 p)
+            format!("length({}) - 2.0", self.input.glsl_code())
+        }
+        fn inputs(&self) -> Vec<Rc<GlslBLock>> {
+            Vec::new()
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct GlslOut {
+        input: Rc<GlslBLock>,
+    }
+    impl GlslOut {
+        pub fn new(input: Rc<GlslBLock>) -> Self {
+            Self {
+                input,
+            }
+        }
+    }
+    impl GlslBLock for GlslOut {
+        fn inputs_dims(&self) -> Vec<Dimension> { vec![Dimension::D4] }
+        fn output_dims(&self) -> Dimension { Dimension::D4 }
+        fn glsl_code(&self) -> String {
+            format!("fragColor = {};", self.input.glsl_code())
+        }
+        fn inputs(&self) -> Vec<Rc<GlslBLock>> {
+            vec![self.input.clone()]
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct GlslIn {
+        name: String,
+    }
+    impl GlslIn {
+        pub fn new(name: &str) -> Self {
+            Self {
+                name: name.into(),
+            }
+        }
+    }
+    impl GlslBLock for GlslIn {
+        fn inputs_dims(&self) -> Vec<Dimension> { vec![Dimension::D4] }
+        fn output_dims(&self) -> Dimension { Dimension::D4 }
+        fn glsl_code(&self) -> String {
+            self.name.clone()
+        }
+        fn inputs(&self) -> Vec<Rc<GlslBLock>> {
+            Vec::new()
+        }
+    }
+}
 
 
 
 fn main() {
+    {
+        use glsl_graph::*;
+
+        let frag_coord = Rc::new(GlslIn::new("fragCoord"));
+        let sphere = Rc::new(BaseSphere::new(frag_coord.clone()));
+        let frag_color = Rc::new(GlslOut::new(sphere));
+
+        let mut frag_shader = String::new();
+        frag_shader += "#version 140\n";
+        frag_shader += r#"
+uniform vec2      iResolution;           // viewport resolution (in pixels)
+uniform float     iTime;                 // shader playback time (in seconds)
+uniform float     iTimeDelta;            // render time (in seconds)
+uniform int       iFrame;                // shader playback frame
+uniform float     iChannelTime[4];       // channel playback time (in seconds)
+uniform vec3      iChannelResolution[4]; // channel resolution (in pixels)
+uniform vec4      iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
+//uniform sampler2D iChannel0..3;          // input channel. XX = 2D/Cube
+uniform vec4      iDate;                 // (year, month, day, time in seconds)
+uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
+
+in vec2 fragCoord;
+out vec4 fragColor;
+
+void main()
+{
+"#;
+        let frag_code = frag_color.glsl_code();
+
+        frag_shader += &frag_code;
+        frag_shader += r#"
+}
+"#;
+
+        println!("{}", frag_shader);
+        
+        return;
+    }
+
+
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
     let context = glutin::ContextBuilder::new()
