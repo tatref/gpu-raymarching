@@ -145,8 +145,7 @@ void main()
 
     let mut events_loop = glutin::EventsLoop::new();
     let window = glutin::WindowBuilder::new();
-    let context = glutin::ContextBuilder::new()
-        .with_srgb(true);
+    let context = glutin::ContextBuilder::new();
 
     let display = glium::Display::new(window, context, &events_loop).unwrap();
 
@@ -280,16 +279,27 @@ void main()
     "#;
     
 
-    println!("{}", fragment_shader_src);
 
+    let source = glium::program::ProgramCreationInput::SourceCode {
+        vertex_shader: &vertex_shader_src,
+        tessellation_control_shader: None,
+        tessellation_evaluation_shader: None,
+        geometry_shader: None,
+        fragment_shader: &fragment_shader_src,
+        transform_feedback_varyings: None,
+        outputs_srgb: true,
+        uses_point_size: false,
+    };
 
-    let program = match glium::Program::from_source(&display, vertex_shader_src, &fragment_shader_src, None) {
+    let program = match glium::Program::new(&display, source) {
         Ok(x) => x,
         Err(e) => {
+            println!("{}", fragment_shader_src);
             println!("{}", e);
             panic!();
         },
     };
+    
 
     let mut closed = false;
     let clock = time::Instant::now();
@@ -316,7 +326,7 @@ void main()
         events_loop.poll_events(|event| {
             match event {
                 glutin::Event::WindowEvent { event, .. } => match event {
-                    glutin::WindowEvent::Closed => closed = true,
+                    glutin::WindowEvent::CloseRequested => closed = true,
                     _ => ()
                 },
                 _ => (),
