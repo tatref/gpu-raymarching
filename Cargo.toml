@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["tatref <tatref@github.com>"]
 
 [dependencies]
-glium = { version = "0.21.0", path = "../glium" }
+glium = "0.21.0"
 notify = "4.0.3"
 crossbeam-channel = "0.1.2"

@@ -140,10 +140,6 @@ void main()
         frag_shader += r#"
 }
 "#;
-
-        println!("{}", frag_shader);
-        
-        return;
     }
 
 
@@ -177,7 +173,7 @@ void main()
 
         out vec2 fragCoord;
 
-        uniform float time;
+        uniform float iTime;
         uniform vec2 res;
 
         void main() {
@@ -222,19 +218,28 @@ void main()
 }
 "#;
 
-    let mut fragment_shader_src = String::new();
-    fragment_shader_src.push_str(fragment_shader_version);
-    fragment_shader_src.push_str(fragment_shader_uniforms);
-    fragment_shader_src.push_str(fragment_shader_default);
-
-    println!("{}", fragment_shader_src);
+    //let mut fragment_shader_src = String::new();
+    //fragment_shader_src.push_str(fragment_shader_version);
+    //fragment_shader_src.push_str(fragment_shader_uniforms);
+    //fragment_shader_src.push_str(fragment_shader_default);
 
 
-/*
     let fragment_shader_src = r#"
         #version 140
 
-        out vec4 color;
+        uniform vec2      iResolution;           // viewport resolution (in pixels)
+        uniform float     iTime;                 // shader playback time (in seconds)
+        uniform float     iTimeDelta;            // render time (in seconds)
+        uniform int       iFrame;                // shader playback frame
+        uniform float     iChannelTime[4];       // channel playback time (in seconds)
+        uniform vec3      iChannelResolution[4]; // channel resolution (in pixels)
+        uniform vec4      iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
+        //uniform sampler2D iChannel0..3;          // input channel. XX = 2D/Cube
+        uniform vec4      iDate;                 // (year, month, day, time in seconds)
+        uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
+        
+        in vec2 fragCoord;
+        out vec4 fragColor;
 
 
         float plane(vec3 p)
@@ -248,18 +253,16 @@ void main()
         }
 
         void main() {
-            color = vec4(fract(vPosition), 0.0, 1.0);
-
-            vec2 uv = vPosition;
+            vec2 uv = fragCoord;
 
             // camera origin
-            vec3 p = vec3(sin(time) * 4.0, 5.0, -10.0);
+            vec3 p = vec3(sin(iTime) * 4.0, 5.0, -10.0);
             // direction
             vec3 dir = normalize(vec3(uv, 1.0));
 
 
             // background color
-            color = vec4(fract(uv), 0.0, 1.0);
+            fragColor = vec4(fract(uv), 0.0, 1.0);
 
             for (int i=0; i<1024; i++)
             {
@@ -267,7 +270,7 @@ void main()
 
                 if (d < 0.000001)
                 {
-                    color = vec4(fract(p), 1.0);
+                    fragColor = vec4(fract(p), 1.0);
                     break;
                 }
                 p += d * dir;
@@ -275,7 +278,10 @@ void main()
 
         }
     "#;
-    */
+    
+
+    println!("{}", fragment_shader_src);
+
 
     let program = match glium::Program::from_source(&display, vertex_shader_src, &fragment_shader_src, None) {
         Ok(x) => x,
