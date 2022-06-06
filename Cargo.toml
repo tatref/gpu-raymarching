@@ -6,4 +6,4 @@ authors = ["tatref <tatref@github.com>"]
 [dependencies]
 glium = "0.25"
 notify = "4.0"
-crossbeam-channel = "0.1.2"
+crossbeam-channel = "0.4.4"
